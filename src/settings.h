@@ -1,5 +1,5 @@
 //#define DEBUG_SERIAL    1
-//#define DEBUG_MQTT      1 
+#define DEBUG_MQTT      1 
 #define MODBUS_RATE     9600      // Modbus speed of Growatt, do not change
 #define SERIAL_RATE     115200    // Serial speed for status info
 #define MAX485_DE       5         // D1, DE pin on the TTL to RS485 converter
@@ -21,9 +21,9 @@
 
 // Update the below parameters for your project
 // Also check NTP.h for some parameters as well
-const char* ssid = "ssid";           // Wifi SSID
-const char* password = "password";    // Wifi password
-const char* mqtt_server = "192.168.x.x";     // MQTT server
+const char* ssid = "lallinger";           // Wifi SSID
+const char* password = "Fritz9.3.1990";    // Wifi password
+const char* mqtt_server = "192.168.0.211";     // MQTT server
 const char* mqtt_user = "";             // MQTT userid
 const char* mqtt_password = "";         // MQTT password
 const char* clientID = "easun";                // MQTT client ID

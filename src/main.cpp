@@ -1,5 +1,5 @@
-// Growatt Solar Inverter to MQTT
-// Repo: https://github.com/nygma2004/growatt2mqtt
+// modbusrs485 Solar Inverter to MQTT
+// Repo: https://github.com/nygma2004/modbusrs4852mqtt
 // author: Csongor Varga, csongor.varga@gmail.com
 // 1 Phase, 2 string inverter version such as MIN 3000 TL-XE, MIC 1500 TL-X
 
@@ -33,7 +33,7 @@ WiFiClient espClient;
 PubSubClient mqtt(mqtt_server, 1883, 0, espClient);
 // SoftwareSerial modbus(MAX485_RX, MAX485_TX, false, 256); //RX, TX
 SoftwareSerial modbus(MAX485_RX, MAX485_TX, false); //RX, TX
-ModbusMaster growatt;
+ModbusMaster modbusrs485;
 CRGB leds[NUM_LEDS];
 
 void callback(char* topic, byte* payload, unsigned int length);
@@ -50,28 +50,28 @@ void postTransmission() {
 
 void sendModbusError(uint8_t result) {
   String message = "";
-  if (result==growatt.ku8MBIllegalFunction) {
+  if (result==modbusrs485.ku8MBIllegalFunction) {
     message = "Illegal function";
   }
-  if (result==growatt.ku8MBIllegalDataAddress) {
+  if (result==modbusrs485.ku8MBIllegalDataAddress) {
     message = "Illegal data address";
   }
-  if (result==growatt.ku8MBIllegalDataValue) {
+  if (result==modbusrs485.ku8MBIllegalDataValue) {
     message = "Illegal data value";
   }
-  if (result==growatt.ku8MBSlaveDeviceFailure) {
+  if (result==modbusrs485.ku8MBSlaveDeviceFailure) {
     message = "Slave device failure";
   }
-  if (result==growatt.ku8MBInvalidSlaveID) {
+  if (result==modbusrs485.ku8MBInvalidSlaveID) {
     message = "Invalid slave ID";
   }
-  if (result==growatt.ku8MBInvalidFunction) {
+  if (result==modbusrs485.ku8MBInvalidFunction) {
     message = "Invalid function";
   }
-  if (result==growatt.ku8MBResponseTimedOut) {
+  if (result==modbusrs485.ku8MBResponseTimedOut) {
     message = "Response timed out";
   }
-  if (result==growatt.ku8MBInvalidCRC) {
+  if (result==modbusrs485.ku8MBInvalidCRC) {
     message = "Invalid CRC";
   }
   if (message=="") {
@@ -97,9 +97,9 @@ void ReadInputRegisters() {
   digitalWrite(STATUS_LED, 0);
 
   ESP.wdtDisable();
-  result = growatt.readInputRegisters(setcounter*64,64);
+  result = modbusrs485.readInputRegisters(setcounter*64,64);
   ESP.wdtEnable(1);
-  if (result == growatt.ku8MBSuccess)   {
+  if (result == modbusrs485.ku8MBSuccess)   {
 
     leds[0] = CRGB::Green;
     FastLED.show();
@@ -115,11 +115,11 @@ void ReadInputRegisters() {
     for(int i=0;i<64;i++) {
 
       #ifdef DEBUG_SERIAL
-        sprintf(value,"%d|",growatt.getResponseBuffer(i));
+        sprintf(value,"%d|",modbusrs485.getResponseBuffer(i));
         Serial.print(value);
       #endif
       #ifdef DEBUG_MQTT
-        sprintf(json,"%s \"r%d\":%d,",json,i,growatt.getResponseBuffer(i));
+        sprintf(json,"%s \"r%d\":%d,",json,i,modbusrs485.getResponseBuffer(i));
       #endif
       
     }
@@ -134,129 +134,54 @@ void ReadInputRegisters() {
     #endif
 
     if (setcounter==0) {
+      /*
       // Status and PV data
-      modbusdata.status = growatt.getResponseBuffer(0);
-      modbusdata.solarpower = ((growatt.getResponseBuffer(1) << 16) | growatt.getResponseBuffer(2))*0.1;
+      modbusdata.status = modbusrs485.getResponseBuffer(0);
+      modbusdata.solarpower = ((modbusrs485.getResponseBuffer(1) << 16) | modbusrs485.getResponseBuffer(2))*0.1;
       
-      modbusdata.pv1voltage = growatt.getResponseBuffer(3)*0.1;
-      modbusdata.pv1current = growatt.getResponseBuffer(4)*0.1;
-      modbusdata.pv1power = ((growatt.getResponseBuffer(5) << 16) | growatt.getResponseBuffer(6))*0.1;
+      modbusdata.pv1voltage = modbusrs485.getResponseBuffer(3)*0.1;
+      modbusdata.pv1current = modbusrs485.getResponseBuffer(4)*0.1;
+      modbusdata.pv1power = ((modbusrs485.getResponseBuffer(5) << 16) | modbusrs485.getResponseBuffer(6))*0.1;
   
-      modbusdata.pv2voltage = growatt.getResponseBuffer(7)*0.1;
-      modbusdata.pv2current = growatt.getResponseBuffer(8)*0.1;
-      modbusdata.pv2power = ((growatt.getResponseBuffer(9) << 16) | growatt.getResponseBuffer(10))*0.1;
+      modbusdata.pv2voltage = modbusrs485.getResponseBuffer(7)*0.1;
+      modbusdata.pv2current = modbusrs485.getResponseBuffer(8)*0.1;
+      modbusdata.pv2power = ((modbusrs485.getResponseBuffer(9) << 16) | modbusrs485.getResponseBuffer(10))*0.1;
   
       // Output
-      modbusdata.outputpower = ((growatt.getResponseBuffer(35) << 16) | growatt.getResponseBuffer(36))*0.1;
-      modbusdata.gridfrequency = growatt.getResponseBuffer(37)*0.01;
-      modbusdata.gridvoltage = growatt.getResponseBuffer(38)*0.1;
+      modbusdata.outputpower = ((modbusrs485.getResponseBuffer(35) << 16) | modbusrs485.getResponseBuffer(36))*0.1;
+      modbusdata.gridfrequency = modbusrs485.getResponseBuffer(37)*0.01;
+      modbusdata.gridvoltage = modbusrs485.getResponseBuffer(38)*0.1;
   
       // Energy
-      modbusdata.energytoday = ((growatt.getResponseBuffer(53) << 16) | growatt.getResponseBuffer(54))*0.1;
-      modbusdata.energytotal = ((growatt.getResponseBuffer(55) << 16) | growatt.getResponseBuffer(56))*0.1;
-      modbusdata.totalworktime = ((growatt.getResponseBuffer(57) << 16) | growatt.getResponseBuffer(58))*0.5;
+      modbusdata.energytoday = ((modbusrs485.getResponseBuffer(53) << 16) | modbusrs485.getResponseBuffer(54))*0.1;
+      modbusdata.energytotal = ((modbusrs485.getResponseBuffer(55) << 16) | modbusrs485.getResponseBuffer(56))*0.1;
+      modbusdata.totalworktime = ((modbusrs485.getResponseBuffer(57) << 16) | modbusrs485.getResponseBuffer(58))*0.5;
   
-      modbusdata.pv1energytoday = ((growatt.getResponseBuffer(59) << 16) | growatt.getResponseBuffer(60))*0.1;
-      modbusdata.pv1energytotal = ((growatt.getResponseBuffer(61) << 16) | growatt.getResponseBuffer(62))*0.1;
-      overflow = growatt.getResponseBuffer(63);
+      modbusdata.pv1energytoday = ((modbusrs485.getResponseBuffer(59) << 16) | modbusrs485.getResponseBuffer(60))*0.1;
+      modbusdata.pv1energytotal = ((modbusrs485.getResponseBuffer(61) << 16) | modbusrs485.getResponseBuffer(62))*0.1;
+      overflow = modbusrs485.getResponseBuffer(63); */
     }
     if (setcounter==1) {
-      modbusdata.pv2energytoday = ((overflow << 16) | growatt.getResponseBuffer(64-64))*0.1;
-      modbusdata.pv2energytotal = ((growatt.getResponseBuffer(65-64) << 16) | growatt.getResponseBuffer(66-64))*0.1;
+      /*
+      modbusdata.pv2energytoday = ((overflow << 16) | modbusrs485.getResponseBuffer(64-64))*0.1;
+      modbusdata.pv2energytotal = ((modbusrs485.getResponseBuffer(65-64) << 16) | modbusrs485.getResponseBuffer(66-64))*0.1;
   
       // Temperatures
-      modbusdata.tempinverter = growatt.getResponseBuffer(93-64)*0.1;
-      modbusdata.tempipm = growatt.getResponseBuffer(94-64)*0.1;
-      modbusdata.tempboost = growatt.getResponseBuffer(95-64)*0.1;
+      modbusdata.tempinverter = modbusrs485.getResponseBuffer(93-64)*0.1;
+      modbusdata.tempipm = modbusrs485.getResponseBuffer(94-64)*0.1;
+      modbusdata.tempboost = modbusrs485.getResponseBuffer(95-64)*0.1;
   
       // Diag data
-      modbusdata.ipf = growatt.getResponseBuffer(100-64);
-      modbusdata.realoppercent = growatt.getResponseBuffer(101-64);
-      modbusdata.opfullpower = ((growatt.getResponseBuffer(102-64) << 16) | growatt.getResponseBuffer(103-64))*0.1;
-      modbusdata.deratingmode = growatt.getResponseBuffer(104-64);
-                                //  0:no derate;
-                                //  1:PV;
-                                //  2:*;
-                                //  3:Vac;
-                                //  4:Fac;
-                                //  5:Tboost;
-                                //  6:Tinv;
-                                //  7:Control;
-                                //  8:*;
-                                //  9:*OverBack
-                                //  ByTime;
-      
-      modbusdata.faultcode = growatt.getResponseBuffer(105-64);
-                            //  1~23 " Error: 99+x
-                            //  24 "Auto Test
-                            //  25 "No AC
-                            //  26 "PV Isolation Low",
-                            //  27 " Residual I
-                            //  28 " Output High
-                            //  29 " PV Voltage
-                            //  30 " AC V Outrange
-                            //  31 " AC F Outrange
-                            //  32 " Module Hot
-  
-  
-      modbusdata.faultbitcode = ((growatt.getResponseBuffer(105-64) << 16) | growatt.getResponseBuffer(106-64));
-                                //  0x00000001 \
-                                //  0x00000002 Communication error
-                                //  0x00000004 \
-                                //  0x00000008 StrReverse or StrShort fault
-                                //  0x00000010 Model Init fault
-                                //  0x00000020 Grid Volt Sample diffirent
-                                //  0x00000040 ISO Sample diffirent
-                                //  0x00000080 GFCI Sample diffirent
-                                //  0x00000100 \
-                                //  0x00000200 \
-                                //  0x00000400 \
-                                //  0x00000800 \
-                                //  0x00001000 AFCI Fault
-                                //  0x00002000 \
-                                //  0x00004000 AFCI Module fault
-                                //  0x00008000 \
-                                //  0x00010000 \
-                                //  0x00020000 Relay check fault
-                                //  0x00040000 \
-                                //  0x00080000 \
-                                //  0x00100000 \
-                                //  0x00200000 Communication error
-                                //  0x00400000 Bus Voltage error
-                                //  0x00800000 AutoTest fail
-                                //  0x01000000 No Utility
-                                //  0x02000000 PV Isolation Low
-                                //  0x04000000 Residual I High
-                                //  0x08000000 Output High DCI
-                                //  0x10000000 PV Voltage high
-                                //  0x20000000 AC V Outrange
-                                //  0x40000000 AC F Outrange
-                                //  0x80000000 TempratureHigh
-  
-      modbusdata.warningbitcode = ((growatt.getResponseBuffer(110-64) << 16) | growatt.getResponseBuffer(111-64));
-                                  //  0x0001 Fan warning
-                                  //  0x0002 String communication abnormal
-                                  //  0x0004 StrPIDconfig Warning
-                                  //  0x0008 \
-                                  //  0x0010 DSP and COM firmware unmatch
-                                  //  0x0020 \
-                                  //  0x0040 SPD abnormal
-                                  //  0x0080 GND and N connect abnormal
-                                  //  0x0100 PV1 or PV2 circuit short
-                                  //  0x0200 PV1 or PV2 boost driver broken
-                                  //  0x0400 \
-                                  //  0x0800 \
-                                  //  0x1000 \
-                                  //  0x2000 \
-                                  //  0x4000 \
-                                  //  0x8000 \
-                                  
+      modbusdata.ipf = modbusrs485.getResponseBuffer(100-64);
+      modbusdata.realoppercent = modbusrs485.getResponseBuffer(101-64);
+      modbusdata.opfullpower = ((modbusrs485.getResponseBuffer(102-64) << 16) | modbusrs485.getResponseBuffer(103-64))*0.1;
+      modbusdata.deratingmode = modbusrs485.getResponseBuffer(104-64); */
       }
 
       setcounter++;
       if (setcounter==2) {
         setcounter = 0;      
-    
+  /* 
         // Generate the modbus MQTT message
         sprintf(json,"{",json);
         sprintf(json,"%s \"status\":%d,",json,modbusdata.status);
@@ -290,7 +215,7 @@ void ReadInputRegisters() {
         sprintf(json,"%s \"deratingmode\":%d,",json,modbusdata.deratingmode);
         sprintf(json,"%s \"faultcode\":%d,",json,modbusdata.faultcode);
         sprintf(json,"%s \"faultbitcode\":%d,",json,modbusdata.faultbitcode);
-        sprintf(json,"%s \"warningbitcode\":%d }",json,modbusdata.warningbitcode);
+        sprintf(json,"%s \"warningbitcode\":%d }",json,modbusdata.warningbitcode); */
   
         #ifdef DEBUG_SERIAL
         Serial.println(json);
@@ -312,10 +237,6 @@ void ReadInputRegisters() {
     sendModbusError(result);
   }
   digitalWrite(STATUS_LED, 1);
-
-
-
-    
 }
 
 void ReadHoldingRegisters() {
@@ -331,9 +252,9 @@ void ReadHoldingRegisters() {
 
   digitalWrite(STATUS_LED, 0);
   ESP.wdtDisable();
-  result = growatt.readHoldingRegisters(setcounter*64,64);
+  result = modbusrs485.readHoldingRegisters(setcounter*64,64);
   ESP.wdtEnable(1);
-  if (result == growatt.ku8MBSuccess)   {
+  if (result == modbusrs485.ku8MBSuccess)   {
 
     leds[0] = CRGB::Green;
     FastLED.show();
@@ -349,11 +270,11 @@ void ReadHoldingRegisters() {
     for(int i=0;i<64;i++) {
 
       #ifdef DEBUG_SERIAL
-        sprintf(value,"%d|",growatt.getResponseBuffer(i));
+        sprintf(value,"%d|",modbusrs485.getResponseBuffer(i));
         Serial.print(value);
       #endif
       #ifdef DEBUG_MQTT
-        sprintf(json,"%s \"r%d\":%d,",json,i,growatt.getResponseBuffer(i));
+        sprintf(json,"%s \"r%d\":%d,",json,i,modbusrs485.getResponseBuffer(i));
       #endif
       
     }
@@ -369,7 +290,8 @@ void ReadHoldingRegisters() {
     #endif
 
     if (setcounter==0) {
-      modbussettings.safetyfuncen = growatt.getResponseBuffer(1); // Safety Function Enabled
+      /*
+      modbussettings.safetyfuncen = modbusrs485.getResponseBuffer(1); // Safety Function Enabled
                                   //  Bit0: SPI enable
                                   //  Bit1: AutoTestStart
                                   //  Bit2: LVFRT enable
@@ -381,55 +303,57 @@ void ReadHoldingRegisters() {
                                   //  Bit8: ROCOF enable
                                   //  Bit9: Recover FreqDerating Mode Enable
                                   //  Bit10~15: Reserved
-      modbussettings.maxoutputactivepp = growatt.getResponseBuffer(3); // Inverter M ax output active power percent  0-100: %, 255: not limited
-      modbussettings.maxoutputreactivepp = growatt.getResponseBuffer(4); // Inverter M ax output reactive power percent  0-100: %, 255: not limited
-      modbussettings.maxpower = ((growatt.getResponseBuffer(6) << 16) | growatt.getResponseBuffer(7))*0.1;
-      modbussettings.voltnormal = growatt.getResponseBuffer(8)*0.1;
+      modbussettings.maxoutputactivepp = modbusrs485.getResponseBuffer(3); // Inverter M ax output active power percent  0-100: %, 255: not limited
+      modbussettings.maxoutputreactivepp = modbusrs485.getResponseBuffer(4); // Inverter M ax output reactive power percent  0-100: %, 255: not limited
+      modbussettings.maxpower = ((modbusrs485.getResponseBuffer(6) << 16) | modbusrs485.getResponseBuffer(7))*0.1;
+      modbussettings.voltnormal = modbusrs485.getResponseBuffer(8)*0.1;
       strncpy(modbussettings.firmware,"      ",6);
-      modbussettings.firmware[0] = growatt.getResponseBuffer(9) >> 8;
-      modbussettings.firmware[1] = growatt.getResponseBuffer(9) & 0xff;
-      modbussettings.firmware[2] = growatt.getResponseBuffer(10) >> 8;
-      modbussettings.firmware[3] = growatt.getResponseBuffer(10) & 0xff;
-      modbussettings.firmware[4] = growatt.getResponseBuffer(11) >> 8;
-      modbussettings.firmware[5] = growatt.getResponseBuffer(11) & 0xff;
+      modbussettings.firmware[0] = modbusrs485.getResponseBuffer(9) >> 8;
+      modbussettings.firmware[1] = modbusrs485.getResponseBuffer(9) & 0xff;
+      modbussettings.firmware[2] = modbusrs485.getResponseBuffer(10) >> 8;
+      modbussettings.firmware[3] = modbusrs485.getResponseBuffer(10) & 0xff;
+      modbussettings.firmware[4] = modbusrs485.getResponseBuffer(11) >> 8;
+      modbussettings.firmware[5] = modbusrs485.getResponseBuffer(11) & 0xff;
   
       strncpy(modbussettings.controlfirmware,"      ",6);
-      modbussettings.controlfirmware[0] = growatt.getResponseBuffer(12) >> 8;
-      modbussettings.controlfirmware[1] = growatt.getResponseBuffer(12) & 0xff;
-      modbussettings.controlfirmware[2] = growatt.getResponseBuffer(13) >> 8;
-      modbussettings.controlfirmware[3] = growatt.getResponseBuffer(13) & 0xff;
-      modbussettings.controlfirmware[4] = growatt.getResponseBuffer(14) >> 8;
-      modbussettings.controlfirmware[5] = growatt.getResponseBuffer(14) & 0xff;
+      modbussettings.controlfirmware[0] = modbusrs485.getResponseBuffer(12) >> 8;
+      modbussettings.controlfirmware[1] = modbusrs485.getResponseBuffer(12) & 0xff;
+      modbussettings.controlfirmware[2] = modbusrs485.getResponseBuffer(13) >> 8;
+      modbussettings.controlfirmware[3] = modbusrs485.getResponseBuffer(13) & 0xff;
+      modbussettings.controlfirmware[4] = modbusrs485.getResponseBuffer(14) >> 8;
+      modbussettings.controlfirmware[5] = modbusrs485.getResponseBuffer(14) & 0xff;
       
-      modbussettings.startvoltage = growatt.getResponseBuffer(17)*0.1;
+      modbussettings.startvoltage = modbusrs485.getResponseBuffer(17)*0.1;
   
       strncpy(modbussettings.serial,"          ",10);
-      modbussettings.serial[0] = growatt.getResponseBuffer(23) >> 8;
-      modbussettings.serial[1] = growatt.getResponseBuffer(23) & 0xff;
-      modbussettings.serial[2] = growatt.getResponseBuffer(24) >> 8;
-      modbussettings.serial[3] = growatt.getResponseBuffer(24) & 0xff;
-      modbussettings.serial[4] = growatt.getResponseBuffer(25) >> 8;
-      modbussettings.serial[5] = growatt.getResponseBuffer(25) & 0xff;
-      modbussettings.serial[6] = growatt.getResponseBuffer(26) >> 8;
-      modbussettings.serial[7] = growatt.getResponseBuffer(26) & 0xff;
-      modbussettings.serial[8] = growatt.getResponseBuffer(27) >> 8;
-      modbussettings.serial[9] = growatt.getResponseBuffer(27) & 0xff;
+      modbussettings.serial[0] = modbusrs485.getResponseBuffer(23) >> 8;
+      modbussettings.serial[1] = modbusrs485.getResponseBuffer(23) & 0xff;
+      modbussettings.serial[2] = modbusrs485.getResponseBuffer(24) >> 8;
+      modbussettings.serial[3] = modbusrs485.getResponseBuffer(24) & 0xff;
+      modbussettings.serial[4] = modbusrs485.getResponseBuffer(25) >> 8;
+      modbussettings.serial[5] = modbusrs485.getResponseBuffer(25) & 0xff;
+      modbussettings.serial[6] = modbusrs485.getResponseBuffer(26) >> 8;
+      modbussettings.serial[7] = modbusrs485.getResponseBuffer(26) & 0xff;
+      modbussettings.serial[8] = modbusrs485.getResponseBuffer(27) >> 8;
+      modbussettings.serial[9] = modbusrs485.getResponseBuffer(27) & 0xff;
    
-      modbussettings.gridvoltlowlimit = growatt.getResponseBuffer(52)*0.1;
-      modbussettings.gridvolthighlimit = growatt.getResponseBuffer(53)*0.1;
-      modbussettings.gridfreqlowlimit = growatt.getResponseBuffer(54)*0.01;
-      modbussettings.gridfreqhighlimit = growatt.getResponseBuffer(55)*0.01;
+      modbussettings.gridvoltlowlimit = modbusrs485.getResponseBuffer(52)*0.1;
+      modbussettings.gridvolthighlimit = modbusrs485.getResponseBuffer(53)*0.1;
+      modbussettings.gridfreqlowlimit = modbusrs485.getResponseBuffer(54)*0.01;
+      modbussettings.gridfreqhighlimit = modbusrs485.getResponseBuffer(55)*0.01; */
     }
     if (setcounter==1) {
-      modbussettings.gridvoltlowconnlimit = growatt.getResponseBuffer(64-64)*0.1;
-      modbussettings.gridvolthighconnlimit = growatt.getResponseBuffer(65-64)*0.1;
-      modbussettings.gridfreqlowconnlimit = growatt.getResponseBuffer(66-64)*0.01;
-      modbussettings.gridfreqhighconnlimit = growatt.getResponseBuffer(67-64)*0.01;
+      /*
+      modbussettings.gridvoltlowconnlimit = modbusrs485.getResponseBuffer(64-64)*0.1;
+      modbussettings.gridvolthighconnlimit = modbusrs485.getResponseBuffer(65-64)*0.1;
+      modbussettings.gridfreqlowconnlimit = modbusrs485.getResponseBuffer(66-64)*0.01;
+      modbussettings.gridfreqhighconnlimit = modbusrs485.getResponseBuffer(67-64)*0.01; */
     }
 
     setcounter++;
     if (setcounter==2) {
       setcounter = 0;
+      /*
       // Generate the modbus MQTT message
       sprintf(json,"{",json);
   
@@ -451,7 +375,7 @@ void ReadHoldingRegisters() {
   
       sprintf(json,"%s \"firmware\":\"%s\",",json,modbussettings.firmware);
       sprintf(json,"%s \"controlfirmware\":\"%s\",",json,modbussettings.controlfirmware);
-      sprintf(json,"%s \"serial\":\"%s\" }",json,modbussettings.serial);
+      sprintf(json,"%s \"serial\":\"%s\" }",json,modbussettings.serial); */
 
       #ifdef DEBUG_SERIAL
       Serial.println(json);
@@ -476,9 +400,6 @@ void ReadHoldingRegisters() {
     sendModbusError(result);
   }
   digitalWrite(STATUS_LED, 1);
-
-
-    
 }
 
 
@@ -555,7 +476,7 @@ void setup() {
   FastLED.show();
 
   Serial.begin(SERIAL_RATE);
-  Serial.println(F("\nGrowatt Solar Inverter to MQTT Gateway"));
+  Serial.println(F("\nmodbusrs485 Solar Inverter to MQTT Gateway"));
   // Init outputs, RS485 in receive mode
   pinMode(MAX485_RE_NEG, OUTPUT);
   pinMode(MAX485_DE, OUTPUT);
@@ -599,10 +520,10 @@ void setup() {
   Serial.println(WiFi.RSSI());
 
   // Set up the Modbus line
-  growatt.begin(SLAVE_ID , modbus);
+  modbusrs485.begin(SLAVE_ID , modbus);
   // Callbacks allow us to configure the RS485 transceiver correctly
-  growatt.preTransmission(preTransmission);
-  growatt.postTransmission(postTransmission);
+  modbusrs485.preTransmission(preTransmission);
+  modbusrs485.postTransmission(postTransmission);
   Serial.println("Modbus connection is set up");
 
   // Create the 1 second timer interrupt
@@ -610,7 +531,7 @@ void setup() {
   os_timer_arm(&myTimer, 1000, true);
 
   server.on("/", [](){                        // Dummy page
-    server.send(200, "text/plain", "Growatt Solar Inverter to MQTT Gateway");
+    server.send(200, "text/plain", "modbusrs485 Solar Inverter to MQTT Gateway");
   });
   server.begin();
   Serial.println(F("HTTP server started"));

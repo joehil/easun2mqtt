@@ -18,7 +18,7 @@ int setcounter = 0;
 bool ledoff = false;
 bool holdingregisters = false;
 char newclientid[80];
-char buildversion[12]="v1.3.1p2s";
+char buildversion[12]="v0.9.0";
 int overflow;
 
 struct modbus_input_registers 
