@@ -113,6 +113,7 @@ void ReadInputRegisters() {
       #endif
     }
     sprintf(json,"%s \"current\":%.2f,",json,(double)((int16_t)modbusrs485.getResponseBuffer(1)*0.01));
+    sprintf(json,"%s \"SOC\":%.2f,",json,(double)(modbusrs485.getResponseBuffer(11)*0.01));
     sprintf(json,"%s \"voltage\":%.2f,",json,(double)(modbusrs485.getResponseBuffer(7)*0.01));
     sprintf(json,"%s \"end\":1 }",json);
 
