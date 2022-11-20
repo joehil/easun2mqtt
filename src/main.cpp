@@ -97,7 +97,7 @@ void ReadInputRegisters() {
   digitalWrite(STATUS_LED, 0);
 
   ESP.wdtDisable();
-  result = modbusrs485.readInputRegisters(setcounter*64,64);
+  result = modbusrs485.readHoldingRegisters(15,64);
   ESP.wdtEnable(1);
   if (result == modbusrs485.ku8MBSuccess)   {
 
@@ -106,28 +106,16 @@ void ReadInputRegisters() {
     lastRGB = millis();
     ledoff = true;
     
-    #ifdef DEBUG_SERIAL
-      Serial.print("InputReg page");
-      Serial.print(setcounter);
-      Serial.print(": ");
-    #endif
     sprintf(json,"{");
     for(int i=0;i<64;i++) {
-
-      #ifdef DEBUG_SERIAL
-        sprintf(value,"%d|",modbusrs485.getResponseBuffer(i));
-        Serial.print(value);
-      #endif
       #ifdef DEBUG_MQTT
-        sprintf(json,"%s \"r%d\":%d,",json,i,modbusrs485.getResponseBuffer(i));
+        sprintf(json,"%s \"r%02d\":%d,",json,i,modbusrs485.getResponseBuffer(i));
       #endif
-      
     }
+    sprintf(json,"%s \"current\":%.2f,",json,(double)((int16_t)modbusrs485.getResponseBuffer(1)*0.01));
+    sprintf(json,"%s \"voltage\":%.2f,",json,(double)(modbusrs485.getResponseBuffer(7)*0.01));
     sprintf(json,"%s \"end\":1 }",json);
 
-    #ifdef DEBUG_SERIAL
-      Serial.println();
-    #endif
     #ifdef DEBUG_MQTT
       sprintf(topic,"%s/raw",topicRoot);
       mqtt.publish(topic, json);
@@ -239,169 +227,6 @@ void ReadInputRegisters() {
   digitalWrite(STATUS_LED, 1);
 }
 
-void ReadHoldingRegisters() {
-  char json[1024];
-  char topic[80];
-  char value[10]; 
-
-
-  leds[0] = CRGB::Yellow;
-  FastLED.show();
-  uint8_t result;
-  //uint16_t data[6];
-
-  digitalWrite(STATUS_LED, 0);
-  ESP.wdtDisable();
-  result = modbusrs485.readHoldingRegisters(setcounter*64,64);
-  ESP.wdtEnable(1);
-  if (result == modbusrs485.ku8MBSuccess)   {
-
-    leds[0] = CRGB::Green;
-    FastLED.show();
-    lastRGB = millis();
-    ledoff = true;
-    
-    #ifdef DEBUG_SERIAL
-      Serial.print("HoldingReg Page");
-      Serial.print(setcounter);
-      Serial.print(": ");
-    #endif
-    sprintf(json,"{");
-    for(int i=0;i<64;i++) {
-
-      #ifdef DEBUG_SERIAL
-        sprintf(value,"%d|",modbusrs485.getResponseBuffer(i));
-        Serial.print(value);
-      #endif
-      #ifdef DEBUG_MQTT
-        sprintf(json,"%s \"r%d\":%d,",json,i,modbusrs485.getResponseBuffer(i));
-      #endif
-      
-    }
-    
-
-    #ifdef DEBUG_SERIAL
-      Serial.println();
-    #endif
-    #ifdef DEBUG_MQTT
-      sprintf(json,"%s \"end\":1 }",json);
-      sprintf(topic,"%s/holding",topicRoot);
-      mqtt.publish(topic, json);
-    #endif
-
-    if (setcounter==0) {
-      /*
-      modbussettings.safetyfuncen = modbusrs485.getResponseBuffer(1); // Safety Function Enabled
-                                  //  Bit0: SPI enable
-                                  //  Bit1: AutoTestStart
-                                  //  Bit2: LVFRT enable
-                                  //  Bit3: FreqDerating Enable
-                                  //  Bit4: Softstart enable
-                                  //  Bit5: DRMS enable
-                                  //  Bit6: Power Volt Func Enable
-                                  //  Bit7: HVFRT enable
-                                  //  Bit8: ROCOF enable
-                                  //  Bit9: Recover FreqDerating Mode Enable
-                                  //  Bit10~15: Reserved
-      modbussettings.maxoutputactivepp = modbusrs485.getResponseBuffer(3); // Inverter M ax output active power percent  0-100: %, 255: not limited
-      modbussettings.maxoutputreactivepp = modbusrs485.getResponseBuffer(4); // Inverter M ax output reactive power percent  0-100: %, 255: not limited
-      modbussettings.maxpower = ((modbusrs485.getResponseBuffer(6) << 16) | modbusrs485.getResponseBuffer(7))*0.1;
-      modbussettings.voltnormal = modbusrs485.getResponseBuffer(8)*0.1;
-      strncpy(modbussettings.firmware,"      ",6);
-      modbussettings.firmware[0] = modbusrs485.getResponseBuffer(9) >> 8;
-      modbussettings.firmware[1] = modbusrs485.getResponseBuffer(9) & 0xff;
-      modbussettings.firmware[2] = modbusrs485.getResponseBuffer(10) >> 8;
-      modbussettings.firmware[3] = modbusrs485.getResponseBuffer(10) & 0xff;
-      modbussettings.firmware[4] = modbusrs485.getResponseBuffer(11) >> 8;
-      modbussettings.firmware[5] = modbusrs485.getResponseBuffer(11) & 0xff;
-  
-      strncpy(modbussettings.controlfirmware,"      ",6);
-      modbussettings.controlfirmware[0] = modbusrs485.getResponseBuffer(12) >> 8;
-      modbussettings.controlfirmware[1] = modbusrs485.getResponseBuffer(12) & 0xff;
-      modbussettings.controlfirmware[2] = modbusrs485.getResponseBuffer(13) >> 8;
-      modbussettings.controlfirmware[3] = modbusrs485.getResponseBuffer(13) & 0xff;
-      modbussettings.controlfirmware[4] = modbusrs485.getResponseBuffer(14) >> 8;
-      modbussettings.controlfirmware[5] = modbusrs485.getResponseBuffer(14) & 0xff;
-      
-      modbussettings.startvoltage = modbusrs485.getResponseBuffer(17)*0.1;
-  
-      strncpy(modbussettings.serial,"          ",10);
-      modbussettings.serial[0] = modbusrs485.getResponseBuffer(23) >> 8;
-      modbussettings.serial[1] = modbusrs485.getResponseBuffer(23) & 0xff;
-      modbussettings.serial[2] = modbusrs485.getResponseBuffer(24) >> 8;
-      modbussettings.serial[3] = modbusrs485.getResponseBuffer(24) & 0xff;
-      modbussettings.serial[4] = modbusrs485.getResponseBuffer(25) >> 8;
-      modbussettings.serial[5] = modbusrs485.getResponseBuffer(25) & 0xff;
-      modbussettings.serial[6] = modbusrs485.getResponseBuffer(26) >> 8;
-      modbussettings.serial[7] = modbusrs485.getResponseBuffer(26) & 0xff;
-      modbussettings.serial[8] = modbusrs485.getResponseBuffer(27) >> 8;
-      modbussettings.serial[9] = modbusrs485.getResponseBuffer(27) & 0xff;
-   
-      modbussettings.gridvoltlowlimit = modbusrs485.getResponseBuffer(52)*0.1;
-      modbussettings.gridvolthighlimit = modbusrs485.getResponseBuffer(53)*0.1;
-      modbussettings.gridfreqlowlimit = modbusrs485.getResponseBuffer(54)*0.01;
-      modbussettings.gridfreqhighlimit = modbusrs485.getResponseBuffer(55)*0.01; */
-    }
-    if (setcounter==1) {
-      /*
-      modbussettings.gridvoltlowconnlimit = modbusrs485.getResponseBuffer(64-64)*0.1;
-      modbussettings.gridvolthighconnlimit = modbusrs485.getResponseBuffer(65-64)*0.1;
-      modbussettings.gridfreqlowconnlimit = modbusrs485.getResponseBuffer(66-64)*0.01;
-      modbussettings.gridfreqhighconnlimit = modbusrs485.getResponseBuffer(67-64)*0.01; */
-    }
-
-    setcounter++;
-    if (setcounter==2) {
-      setcounter = 0;
-      /*
-      // Generate the modbus MQTT message
-      sprintf(json,"{",json);
-  
-      sprintf(json,"%s \"safetyfuncen\":%d,",json,modbussettings.safetyfuncen);
-      sprintf(json,"%s \"maxoutputactivepp\":%d,",json,modbussettings.maxoutputactivepp);
-      sprintf(json,"%s \"maxoutputreactivepp\":%d,",json,modbussettings.maxoutputreactivepp);
-  
-      sprintf(json,"%s \"maxpower\":%.1f,",json,modbussettings.maxpower);
-      sprintf(json,"%s \"voltnormal\":%.1f,",json,modbussettings.voltnormal);
-      sprintf(json,"%s \"startvoltage\":%.1f,",json,modbussettings.startvoltage);
-      sprintf(json,"%s \"gridvoltlowlimit\":%.1f,",json,modbussettings.gridvoltlowlimit);
-      sprintf(json,"%s \"gridvolthighlimit\":%.1f,",json,modbussettings.gridvolthighlimit);
-      sprintf(json,"%s \"gridfreqlowlimit\":%.1f,",json,modbussettings.gridfreqlowlimit);
-      sprintf(json,"%s \"gridfreqhighlimit\":%.1f,",json,modbussettings.gridfreqhighlimit);
-      sprintf(json,"%s \"gridvoltlowconnlimit\":%.1f,",json,modbussettings.gridvoltlowconnlimit);
-      sprintf(json,"%s \"gridvolthighconnlimit\":%.1f,",json,modbussettings.gridvolthighconnlimit);
-      sprintf(json,"%s \"gridfreqlowconnlimit\":%.1f,",json,modbussettings.gridfreqlowconnlimit);
-      sprintf(json,"%s \"gridfreqhighconnlimit\":%.1f,",json,modbussettings.gridfreqhighconnlimit);
-  
-      sprintf(json,"%s \"firmware\":\"%s\",",json,modbussettings.firmware);
-      sprintf(json,"%s \"controlfirmware\":\"%s\",",json,modbussettings.controlfirmware);
-      sprintf(json,"%s \"serial\":\"%s\" }",json,modbussettings.serial); */
-
-      #ifdef DEBUG_SERIAL
-      Serial.println(json);
-      #endif
-      sprintf(topic,"%s/settings",topicRoot);
-      mqtt.publish(topic,json);      
-      Serial.println("Setting MQTT sent");
-      // Set the flag to true not to read the holding registers again
-      holdingregisters=true;
-    }
-    //sprintf(topic,"%s/error",topicRoot);
-    //mqtt.publish(topic,"OK");
-
-
-  } else {
-    leds[0] = CRGB::Red;
-    FastLED.show();
-    lastRGB = millis();
-    ledoff = true;
-
-    Serial.print(F("Error: "));
-    sendModbusError(result);
-  }
-  digitalWrite(STATUS_LED, 1);
-}
-
 
 
 // This is the 1 second timer callback function
@@ -412,14 +237,7 @@ void timerCallback(void *pArg) {
 
   // Query the modbus device 
   if (seconds % UPDATE_MODBUS==0) {
-    //ReadInputRegisters();
-    if (!holdingregisters) {
-      // Read the holding registers
-      ReadHoldingRegisters();      
-    } else {
-      // Read the input registers
-      ReadInputRegisters();
-    }
+    ReadInputRegisters();
   }
 
   // Send RSSI and uptime status

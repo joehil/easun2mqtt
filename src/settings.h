@@ -32,8 +32,8 @@ const char* topicRoot = "easun";             // MQTT root topic for the device, 
 
 // Comment the entire second below for dynamic IP (including the define)
 // #define FIXEDIP   1
-IPAddress local_IP(192, 168, 1, 91);         // Set your Static IP address
-IPAddress gateway(192, 168, 1, 1);          // Set your Gateway IP address
+IPAddress local_IP(192, 168, 0, 91);         // Set your Static IP address
+IPAddress gateway(192, 168, 0, 1);          // Set your Gateway IP address
 IPAddress subnet(255, 255, 255, 0);
-IPAddress primaryDNS(192, 168, 1, 1);   //optional
+IPAddress primaryDNS(192, 168, 0, 1);   //optional
 IPAddress secondaryDNS(8, 8, 4, 4); //optional
