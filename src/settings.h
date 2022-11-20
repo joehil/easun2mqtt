@@ -21,9 +21,9 @@
 
 // Update the below parameters for your project
 // Also check NTP.h for some parameters as well
-const char* ssid = "lallinger";           // Wifi SSID
-const char* password = "Fritz9.3.1990";    // Wifi password
-const char* mqtt_server = "192.168.0.211";     // MQTT server
+const char* ssid = "<ssid>";           // Wifi SSID
+const char* password = "<password>";    // Wifi password
+const char* mqtt_server = "<mqttip>";     // MQTT server
 const char* mqtt_user = "";             // MQTT userid
 const char* mqtt_password = "";         // MQTT password
 const char* clientID = "easun";                // MQTT client ID
