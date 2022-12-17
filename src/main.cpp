@@ -232,8 +232,6 @@ void ReadInputRegisters() {
 
 // This is the 1 second timer callback function
 void timerCallback(void *pArg) {
-
-  
   seconds++;
 
   // Query the modbus device 
@@ -254,7 +252,6 @@ void timerCallback(void *pArg) {
     }
   }
 
-
 }
 
 // MQTT reconnect logic
@@ -273,7 +270,7 @@ void reconnect() {
       Serial.println(F("connected"));
       // ... and resubscribe
       char topic[80];
-      sprintf(topic,"%swrite/#",topicRoot);
+      sprintf(topic,"%s/write",topicRoot);
       mqtt.subscribe(topic);
     } else {
       Serial.print(F("failed, rc="));
@@ -299,9 +296,11 @@ void setup() {
   // Init outputs, RS485 in receive mode
   pinMode(MAX485_RE_NEG, OUTPUT);
   pinMode(MAX485_DE, OUTPUT);
+  pinMode(RELAY, OUTPUT);
   pinMode(STATUS_LED, OUTPUT);
   digitalWrite(MAX485_RE_NEG, 0);
   digitalWrite(MAX485_DE, 0);
+  digitalWrite(RELAY, 0);
 
   // Initialize some variables
   uptime = 0;
@@ -357,6 +356,7 @@ void setup() {
 
   // Set up the MQTT server connection
   if (mqtt_server!="") {
+    Serial.println("Setup MQTT");
     mqtt.setServer(mqtt_server, 1883);
     mqtt.setBufferSize(1024);
     mqtt.setCallback(callback);
@@ -408,13 +408,16 @@ void callback(char* topic, byte* payload, unsigned int length) {
   String mytopic = (char*)topic;
   payload[length] = '\0'; // Null terminator used to terminate the char array
   String message = (char*)payload;
-
   Serial.print(F("Message arrived on topic: ["));
   Serial.print(topic);
   Serial.print(F("], "));
   Serial.println(message);
-
-
+  if (message=="1"){
+    digitalWrite(RELAY, 0);
+  }
+  if (message=="0"){
+    digitalWrite(RELAY, 1);
+  }
 }
 
 void loop() {
@@ -450,6 +453,5 @@ void loop() {
     leds[0] = CRGB::Black;
     FastLED.show();
   }
-
 
 }
