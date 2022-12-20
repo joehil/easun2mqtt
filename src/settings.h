@@ -14,12 +14,6 @@
 #define RGBSTATUSDELAY  500       // delay for turning off the status led
 #define WIFICHECK       500       // how often check lost wifi connection
 
-#define RGBLED_PIN D3        // Neopixel led D3
-#define NUM_LEDS 1
-#define LED_TYPE    WS2812
-#define COLOR_ORDER GRB
-#define BRIGHTNESS  64        // Default LED brightness.
-
 // Update the below parameters for your project
 // Also check NTP.h for some parameters as well
 const char* ssid = "<ssid>";           // Wifi SSID
