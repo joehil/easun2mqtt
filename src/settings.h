@@ -6,7 +6,7 @@
 #define MAX485_RE_NEG   4         // D2, RE pin on the TTL to RS485 converter
 #define MAX485_RX       14        // D5, RO pin on the TTL to RS485 converter
 #define MAX485_TX       12        // D6, DI pin on the TTL to RS485 converter
-#define RELAY           3         // D1, switch relay on and off
+#define RELAY           5         // D1, switch relay on and off
 #define SLAVE_ID        1         // Default slave ID of Growatt
 #define STATUS_LED      2         // Status LED on the Wemos D1 mini (D4)
 #define UPDATE_MODBUS   60        // 1: modbus device is read every second
