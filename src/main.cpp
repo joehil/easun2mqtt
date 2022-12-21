@@ -4,7 +4,6 @@
 // 1 Phase, 2 string inverter version such as MIN 3000 TL-XE, MIC 1500 TL-X
 
 // Libraries:
-// - FastLED by Daniel Garcia
 // - ModbusMaster by Doc Walker
 // - ArduinoOTA
 // - SoftwareSerial
@@ -77,32 +76,27 @@ void sendModbusError(uint8_t result) {
   }
   Serial.println(message);    
   char topic[80];
-  char value[30];
   sprintf(topic,"%s/error",topicRoot);
   mqtt.publish(topic, message.c_str());
   delay(5);
 }
 
 void ReadInputRegisters() {
-  char json[1024];
+  char json[1500];
   char topic[80];
-  char value[10]; 
-
   uint8_t result;
 
-  digitalWrite(STATUS_LED, 0);
+  digitalWrite(STATUS_LED, 1);
 
   ESP.wdtDisable();
   result = modbusrs485.readHoldingRegisters(15,64);
   ESP.wdtEnable(1);
   if (result == modbusrs485.ku8MBSuccess)   {
 
-    ledoff = true;
-    
     sprintf(json,"{");
     for(int i=0;i<64;i++) {
       #ifdef DEBUG_MQTT
-        sprintf(json,"%s \"r%02d\":%d,",json,i,modbusrs485.getResponseBuffer(i));
+//        sprintf(json,"%s \"r%02d\":%d,",json,i,modbusrs485.getResponseBuffer(i));
       #endif
     }
     sprintf(json,"%s \"current\":%.2f,",json,(double)((int16_t)modbusrs485.getResponseBuffer(1)*0.01));
@@ -206,14 +200,14 @@ void ReadInputRegisters() {
         mqtt.publish(topic,json);      
         Serial.println("Data MQTT sent");
     }
-    //sprintf(topic,"%s/error",topicRoot);
-    //mqtt.publish(topic,"OK");
+    sprintf(topic,"%s/error",topicRoot);
+    mqtt.publish(topic,"OK");
 
   } else {
     Serial.print(F("Error: "));
     sendModbusError(result);
   }
-  digitalWrite(STATUS_LED, 1);
+  digitalWrite(STATUS_LED, 0);
 }
 
 
@@ -231,9 +225,13 @@ void timerCallback(void *pArg) {
   if (seconds % UPDATE_STATUS==0) {
     // Send MQTT update
     if (mqtt_server!="") {
+      int st = 0;
       char topic[80];
-      char value[300];
-      sprintf(value,"{\"rssi\": %d, \"uptime\": %d, \"ssid\": \"%s\", \"ip\": \"%d.%d.%d.%d\", \"clientid\":\"%s\", \"version\":\"%s\"}",WiFi.RSSI(),uptime,WiFi.SSID().c_str(),WiFi.localIP()[0],WiFi.localIP()[1],WiFi.localIP()[2],WiFi.localIP()[3],newclientid,buildversion);
+      char value[1024];
+      char strv[4] = "off";
+      st = digitalRead(RELAY);
+      if (st == 1) sprintf(strv, "%s", "on ");
+      sprintf(value,"{\"state\":\"%s\", \"rssi\": %d, \"uptime\": %d, \"ssid\": \"%s\", \"ip\": \"%d.%d.%d.%d\", \"clientid\":\"%s\", \"version\":\"%s\"}",strv,WiFi.RSSI(),uptime,WiFi.SSID().c_str(),WiFi.localIP()[0],WiFi.localIP()[1],WiFi.localIP()[2],WiFi.localIP()[3],newclientid,buildversion);
       sprintf(topic,"%s/%s",topicRoot,"status");
       mqtt.publish(topic, value);
       Serial.println(F("MQTT status sent"));
@@ -269,8 +267,6 @@ void reconnect() {
     }
   }
 }
-
-
 
 void setup() {
   Serial.begin(SERIAL_RATE);
