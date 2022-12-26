@@ -24,7 +24,7 @@
 #include "settings.h"
 
 
-
+int ev2cnt=0;
 os_timer_t myTimer;
 ESP8266WebServer server(80);
 WiFiClient espClient;
@@ -32,6 +32,7 @@ PubSubClient mqtt(mqtt_server, 1883, 0, espClient);
 // SoftwareSerial modbus(MAX485_RX, MAX485_TX, false, 256); //RX, TX
 SoftwareSerial modbus(MAX485_RX, MAX485_TX, false); //RX, TX
 ModbusMaster modbusrs485;
+WiFiEventHandler stationDisconnectedHandler;
 
 void callback(char* topic, byte* payload, unsigned int length);
 
@@ -210,8 +211,6 @@ void ReadInputRegisters() {
   digitalWrite(STATUS_LED, 0);
 }
 
-
-
 // This is the 1 second timer callback function
 void timerCallback(void *pArg) {
   seconds++;
@@ -237,14 +236,22 @@ void timerCallback(void *pArg) {
       Serial.println(F("MQTT status sent"));
     }
   }
+}
 
+void onStationDisconnected(const WiFiEventStationModeDisconnected& evt) {
+      WiFi.reconnect();
+      ev2cnt++;
+      if (ev2cnt > 20) 
+         ESP.restart();
 }
 
 // MQTT reconnect logic
 void reconnect() {
+  int i=0;
   //String mytopic;
   // Loop until we're reconnected
   while (!mqtt.connected()) {
+    i++;
     Serial.print("Attempting MQTT connection...");
     byte mac[6];                     // the MAC address of your Wifi shield
     WiFi.macAddress(mac);
@@ -264,6 +271,9 @@ void reconnect() {
       Serial.println(F(" try again in 5 seconds"));
       // Wait 5 seconds before retrying
       delay(5000);
+      if (i>20) {
+        ESP.restart();  
+      }
     }
   }
 }
@@ -293,7 +303,9 @@ void setup() {
     Serial.println("STA Failed to configure");
   }
   #endif
-  
+
+  WiFi.setAutoReconnect(false);
+  stationDisconnectedHandler = WiFi.onStationModeDisconnected(&onStationDisconnected);
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
